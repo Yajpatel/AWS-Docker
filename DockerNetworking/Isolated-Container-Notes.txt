@@ -1,0 +1,127 @@
+# 🚀 Docker Networking Practical: Custom Network & Isolation
+
+Today I tested how Docker containers behave when they are placed on different networks.  
+I already had two running containers:
+
+- `login`
+- `logout`
+
+Both of them were running on Docker’s default bridge network.
+
+```text
+login   -> 172.17.0.2
+logout  -> 172.17.0.3
+gateway -> 172.17.0.1
+
+Since both were on the same default network, they were able to communicate earlier.
+
+Step 1: Created My Own Docker Network
+sudo docker network create my-app-network
+
+After running this, Docker created a separate custom bridge network named:
+
+my-app-network
+Step 2: Checked Available Networks
+sudo docker network ls
+
+I saw these networks:
+
+bridge
+host
+none
+my-app-network
+Meaning of these:
+bridge → default Docker network
+host → container uses host machine network
+none → no networking
+my-app-network → custom network created by me
+Step 3: Started New Container in Custom Network
+sudo docker run -d --name finance --network=my-app-network nginx:latest
+
+This created a new container:
+
+finance
+
+But this time it was attached to my custom network instead of the default bridge network.
+
+Step 4: Verified Running Containers
+sudo docker ps
+
+Now I had three running containers:
+
+login
+logout
+finance
+Step 5: Inspected Finance Container
+sudo docker inspect finance
+
+Important values:
+
+NetworkMode : my-app-network
+Gateway     : 172.18.0.1
+IPAddress   : 172.18.0.2
+
+So Docker gave it a completely different subnet.
+
+Step 6: Compared with Login Container
+sudo docker inspect login
+
+Important values:
+
+NetworkMode : bridge
+Gateway     : 172.17.0.1
+IPAddress   : 172.17.0.2
+Main Observation
+login   -> 172.17.x.x network
+finance -> 172.18.x.x network
+
+Both containers are in different Docker networks.
+
+Step 7: Tested Communication
+
+I entered inside login container:
+
+sudo docker exec -it login /bin/bash
+
+Then tried to ping finance container:
+
+ping 172.18.0.2
+
+Output started but no reply came.
+
+PING 172.18.0.2 (172.18.0.2) 56(84) bytes of data.
+
+No response.
+
+Final Result
+login -> logout   ✅ Works
+login -> finance  ❌ Does not work
+Why It Happened
+
+Because:
+
+login is on default bridge
+finance is on my-app-network
+
+Docker keeps different networks isolated by default.
+
+So containers on separate Docker networks cannot talk automatically.
+
+Easy Real-Life Example
+
+Think of it like this:
+
+login/logout = Office Building A LAN
+finance      = Office Building B LAN
+
+Different LANs, so no direct communication unless routing is configured.
+
+What I Learned
+Docker can create multiple private networks
+Each network gets its own subnet
+Containers on same network can communicate
+Containers on different networks stay isolated
+Docker networking is useful for separating services like finance, auth, admin etc.
+One-Line Summary
+Same Docker network = communication possible
+Different Docker networks = isolated by default
