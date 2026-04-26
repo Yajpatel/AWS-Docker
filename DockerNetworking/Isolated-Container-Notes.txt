@@ -1,6 +1,7 @@
-# 🚀 Docker Networking Practical: Custom Network & Isolation
+# Docker Networking Practical: Custom Network & Isolation
 
-Today I tested how Docker containers behave when they are placed on different networks.  
+Today I tested how Docker containers behave when they are placed on different networks.
+
 I already had two running containers:
 
 - `login`
@@ -94,8 +95,8 @@ PING 172.18.0.2 (172.18.0.2) 56(84) bytes of data.
 No response.
 
 Final Result
-login -> logout   ✅ Works
-login -> finance  ❌ Does not work
+login -> logout   Works
+login -> finance  Does not work
 Why It Happened
 
 Because:
@@ -125,3 +126,88 @@ Docker networking is useful for separating services like finance, auth, admin et
 One-Line Summary
 Same Docker network = communication possible
 Different Docker networks = isolated by default
+Extra Notes for Revision
+Container Name Ping in Custom Bridge Network
+
+While testing Docker networking, I noticed an important difference between the default bridge network and a user-defined custom bridge network.
+
+In Custom Bridge Network, Containers Can Communicate Using Names
+
+Example:
+
+sudo docker run -d --name finance --network=my-app-network nginx:latest
+sudo docker run -d --name hr --network=my-app-network nginx:latest
+
+Now if I enter one container:
+
+sudo docker exec -it finance /bin/bash
+
+I can ping the other container using its container name:
+
+ping hr
+
+This works.
+
+That means in custom bridge networks, container names behave like hostnames.
+
+Why It Does Not Work in Default Bridge Network
+
+When containers run normally:
+
+docker run -d --name login nginx
+docker run -d --name logout nginx
+
+They join Docker's default bridge network.
+
+In this network:
+
+ping logout
+
+usually does not work.
+
+But:
+
+ping 172.17.0.3
+
+works.
+
+Real Reason (Observed from docker inspect)
+
+When I checked:
+
+docker inspect login
+
+I saw:
+
+DNSNames : null
+
+But in custom bridge network:
+
+docker inspect finance
+
+I saw:
+
+DNSNames:
+- finance
+- container_id
+Meaning
+Default Bridge Network
+
+Docker gives IP connectivity, but no automatic internal DNS name resolution between containers.
+
+ping by IP    Works
+ping by name  Does not work
+Custom Bridge Network
+
+Docker enables built-in DNS server.
+
+ping by IP    Works
+ping by name  Works
+Important 4 Points to Remember
+Docker provides three default networks: bridge, host, and none.
+For basic communication, the default bridge works, but it requires manual port publishing and lacks container-name DNS.
+For multi-container applications, it is better to create a user-defined bridge network.
+On a user-defined bridge network, containers can communicate using their container names as hostnames through Docker’s built-in DNS.
+Final One-Line Summary
+Default bridge = IP-based communication
+Custom bridge = IP + Name-based communication
